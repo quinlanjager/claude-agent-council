@@ -1,27 +1,27 @@
 # Agent Council
 
-A [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) plugin that throws three Claude subagents at your problem in parallel — then either has them **build on each other's ideas** or **debate to stress-test the answer** — before an orchestrator delivers the final result.
+A [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) plugin that throws three Claude subagents at your problem in parallel. They either **build on each other's ideas** or **debate to stress-test the answer**, then an orchestrator delivers the final result.
 
 Two modes, same foundation:
-- **Collaborative** 🤝 (default) — agents explore independently, read each other's work, improve their answers, then an orchestrator writes the best possible synthesis
-- **Adversarial** 🗡️ — agents draft independently, the orchestrator picks the strongest position, the others attack it, then a verdict is delivered
+- **Collaborative** 🤝 (default): agents explore independently, read each other's work, improve their answers, then an orchestrator writes the best possible synthesis
+- **Adversarial** 🗡️: agents draft independently, the orchestrator picks the strongest position, the others attack it, then a verdict is delivered
 
 Fast enough for daily use on hard problems. Smart enough to **decline the council entirely** when the task is too simple to justify the overhead.
 
 ## An honest caveat up front
 
-This plugin runs the council on **Claude models only** (Opus, Sonnet, Haiku). The original Copilot CLI version this was ported from mixed Claude + GPT + Gemini, and that cross-family diversity is genuinely more powerful — different model families have different training data, different blind spots, and produce more distinct perspectives than the same model at different sizes.
+This plugin runs the council on **Claude models only** (Opus, Sonnet, Haiku). The original Copilot CLI version this was ported from mixed Claude + GPT + Gemini, and that cross-family diversity is more powerful. Different model families have different training data, different blind spots, and produce more distinct perspectives than the same model at different sizes.
 
-A single-family council is **probably less effective than a true multi-model council** at the thing this technique is best at (catching blind spots one model would miss). You should know that going in.
+A single-family council is **probably less effective than a cross-family council** at the thing this technique is best at (catching blind spots one model would miss). You should know that going in.
 
 That said, this version is still useful because:
 
-- **Tier diversity isn't nothing.** Opus, Sonnet, and Haiku behave noticeably differently — Opus explores deeper, Sonnet is more practical, Haiku gravitates toward minimal answers. The seats lean into those tendencies on purpose.
+- **Tier diversity isn't nothing.** Opus, Sonnet, and Haiku behave noticeably differently. Opus explores deeper, Sonnet is more practical, Haiku gravitates toward minimal answers. The seats lean into those tendencies on purpose.
 - **Distinct seat prompts dominate.** Most of the diversity in any council comes from *role* and *prompt framing*, not from the underlying model. Three Claudes told to behave very differently still disagree productively.
-- **Mode-driven interaction adds real value.** The "improve" round (collaborative) and the "attack" round (adversarial) force agents to take each other's positions seriously and rewrite or refute them — this is a procedural advantage that's largely independent of model family.
+- **Mode-driven interaction adds value.** The "improve" round (collaborative) and the "attack" round (adversarial) force agents to take each other's positions seriously and rewrite or refute them. That procedural advantage is largely independent of model family.
 - **Native Claude Code integration.** Subagents, parallel dispatch, and the `Agent` tool are first-class here. You get tighter context handling and faster wall-clock time than orchestrating cross-vendor calls from a CLI.
 
-If you need real cross-family diversity, the [llm-council](https://github.com/karpathy/llm-council) project or a Copilot CLI / API-level orchestration will serve you better. If you want a fast, deeply integrated, mode-driven council inside Claude Code, this plugin is the right fit.
+If you need real cross-family diversity, the [llm-council](https://github.com/karpathy/llm-council) project or a Copilot CLI / API / Opencode setup will serve you better. If you want a fast, deeply integrated, mode-driven council inside Claude Code, this plugin is the right fit.
 
 ## Why three seats at all?
 
@@ -64,9 +64,9 @@ flowchart TD
     style E fill:#2ecc71,color:#fff
 ```
 
-1. **Draft** — Alpha, Beta, and Gamma all explore the problem independently
-2. **Improve** — Each agent reads the other two drafts and writes an improved version, stealing the best ideas
-3. **Synthesize** — The orchestrator authors the definitive response from the three improved drafts
+1. **Draft.** Alpha, Beta, and Gamma all explore the problem independently
+2. **Improve.** Each agent reads the other two drafts and writes an improved version, stealing the best ideas
+3. **Synthesize.** The orchestrator authors the definitive response from the three improved drafts
 
 ### Adversarial Mode 🗡️
 
@@ -90,10 +90,10 @@ flowchart TD
     style E fill:#2ecc71,color:#fff
 ```
 
-1. **Draft** — Alpha, Beta, and Gamma all tackle the problem independently
-2. **Triage** — The orchestrator uses a fixed rubric to identify the strongest position. If consensus, skip to verdict.
-3. **Attack** — The other two agents try to tear apart the leading position
-4. **Verdict** — The orchestrator decides: did the leader survive, need modification, or get overturned?
+1. **Draft.** Alpha, Beta, and Gamma all tackle the problem independently
+2. **Triage.** The orchestrator uses a fixed rubric to identify the strongest position. If consensus, skip to verdict.
+3. **Attack.** The other two agents try to tear apart the leading position
+4. **Verdict.** The orchestrator decides: did the leader survive, need modification, or get overturned?
 
 ## Prerequisites
 
@@ -135,7 +135,7 @@ The council automatically detects which mode to use based on your language:
 
 | You say… | Mode | Why |
 |----------|------|-----|
-| `council: How should we structure the API?` | 🤝 Collaborative | Default — exploring a design space |
+| `council: How should we structure the API?` | 🤝 Collaborative | Default. Exploring a design space |
 | `brainstorm: Novel approaches to caching` | 🤝 Collaborative | "brainstorm" = collaborative |
 | `debate: Monorepo vs polyrepo` | 🗡️ Adversarial | "debate" = adversarial |
 | `stress-test: Is this auth flow secure?` | 🗡️ Adversarial | "stress-test" = adversarial |
@@ -159,7 +159,7 @@ Typical fast-path cases:
 - narrow questions with one obvious path
 
 Typical council-worthy cases:
-- competing designs with real tradeoffs
+- competing designs with meaningful tradeoffs
 - security or correctness-sensitive review
 - architecture and research synthesis
 - ambiguous problems where multi-perspective synthesis can beat one model
@@ -171,7 +171,7 @@ Typical council-worthy cases:
 ```
 
 ```
-/council debate Redis vs Memcached for our session store — which survives at scale?
+/council debate Redis vs Memcached for our session store. Which survives at scale?
 ```
 
 ### Inside any Claude Code session
@@ -183,7 +183,7 @@ council: Should we use a monorepo or polyrepo for our microservices?
 ```
 
 ```
-debate: Redis vs Memcached for our session store — which survives at scale?
+debate: Redis vs Memcached for our session store. Which survives at scale?
 ```
 
 ### Verbose mode
@@ -203,14 +203,14 @@ If you want every draft in full, ask for **raw** or **full** council output expl
 
 ## When to use each mode
 
-### Collaborative 🤝 — when you want novel ideas
+### Collaborative 🤝: when you want novel ideas
 
 - Brainstorming sessions and creative problem-solving
 - Exploring a design space with no clear "right answer"
 - Building something new where diverse perspectives help
 - Research where breadth and synthesis matter
 
-### Adversarial 🗡️ — when you want battle-tested answers
+### Adversarial 🗡️: when you want battle-tested answers
 
 - Architecture decisions you'll live with for years
 - Security reviews (missed vulns are expensive)
@@ -253,30 +253,30 @@ Here, **Research** means investigation or literature-style evaluation, not code 
 
 ## Example prompts
 
-**Collaborative — brainstorming:**
+**Collaborative, brainstorming:**
 ```
 council: Novel approaches to real-time collaboration in a document editor.
 Think beyond CRDTs and OT.
 ```
 
-**Collaborative — architecture:**
+**Collaborative, architecture:**
 ```
 council: Design a notification system that scales to 1M users.
 Push, pull, fan-out strategies.
 ```
 
-**Adversarial — decision:**
+**Adversarial, decision:**
 ```
 debate: WebSockets + Redis pub/sub vs SSE + message queue for 10K concurrent users.
 Cost, complexity, scaling, failure modes.
 ```
 
-**Adversarial — security:**
+**Adversarial, security:**
 ```
 verbose stress-test: Review this JWT implementation: [paste code]
 ```
 
-**Adversarial — comparison:**
+**Adversarial, comparison:**
 ```
 debate: PostgreSQL vs DynamoDB for a multi-tenant SaaS with unpredictable query patterns
 ```
@@ -295,10 +295,10 @@ commands/council.md                  /council slash command
 
 ## Inspiration
 
-Inspired by Andrej Karpathy's [llm-council](https://github.com/karpathy/llm-council) — adapted as a Claude Code plugin with a dual-mode architecture.
+Inspired by Andrej Karpathy's [llm-council](https://github.com/karpathy/llm-council), adapted as a Claude Code plugin with a dual-mode architecture.
 
-This plugin is a port of the original **[Sentry01/AgentCouncil](https://github.com/Sentry01/AgentCouncil)** Copilot CLI extension. If you want the true cross-family (Claude + GPT + Gemini) council, go use that one — it's the canonical multi-model version and where this design came from.
+This plugin is a port of the original **[Sentry01/AgentCouncil](https://github.com/Sentry01/AgentCouncil)** Copilot CLI extension. If you want the cross-family (Claude + GPT + Gemini) council, go use that one. It's the canonical multi-model version and where this design came from.
 
 ## License
 
-MIT — do whatever you want with it.
+MIT. Do whatever you want with it.
