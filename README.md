@@ -1,6 +1,6 @@
 # Agent Council
 
-A skill and agent for [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/) that throws three different AI models at your problem in parallel — then either has them **build on each other's ideas** or **debate to stress-test the answer** — before an orchestrator delivers the final result.
+A [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) plugin that throws three Claude subagents at your problem in parallel — then either has them **build on each other's ideas** or **debate to stress-test the answer** — before an orchestrator delivers the final result.
 
 Two modes, same foundation:
 - **Collaborative** 🤝 (default) — agents explore independently, read each other's work, improve their answers, then an orchestrator writes the best possible synthesis
@@ -8,34 +8,39 @@ Two modes, same foundation:
 
 Fast enough for daily use on hard problems. Smart enough to **decline the council entirely** when the task is too simple to justify the overhead.
 
-## What's this for?
+## An honest caveat up front
 
-This is a **[Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/)** extension. You need Copilot CLI installed and running. It won't work with regular GitHub Copilot in your editor — this is the terminal-based agent.
+This plugin runs the council on **Claude models only** (Opus, Sonnet, Haiku). The original Copilot CLI version this was ported from mixed Claude + GPT + Gemini, and that cross-family diversity is genuinely more powerful — different model families have different training data, different blind spots, and produce more distinct perspectives than the same model at different sizes.
 
-It gives you two things:
-- A **skill** that triggers inside any Copilot CLI session (just type `council: your question`)
-- A **standalone agent** you can run directly (`copilot --agent AgentCouncil`)
+A single-family council is **probably less effective than a true multi-model council** at the thing this technique is best at (catching blind spots one model would miss). You should know that going in.
 
-## Why three models?
+That said, this version is still useful because:
+
+- **Tier diversity isn't nothing.** Opus, Sonnet, and Haiku behave noticeably differently — Opus explores deeper, Sonnet is more practical, Haiku gravitates toward minimal answers. The seats lean into those tendencies on purpose.
+- **Distinct seat prompts dominate.** Most of the diversity in any council comes from *role* and *prompt framing*, not from the underlying model. Three Claudes told to behave very differently still disagree productively.
+- **Mode-driven interaction adds real value.** The "improve" round (collaborative) and the "attack" round (adversarial) force agents to take each other's positions seriously and rewrite or refute them — this is a procedural advantage that's largely independent of model family.
+- **Native Claude Code integration.** Subagents, parallel dispatch, and the `Agent` tool are first-class here. You get tighter context handling and faster wall-clock time than orchestrating cross-vendor calls from a CLI.
+
+If you need real cross-family diversity, the [llm-council](https://github.com/karpathy/llm-council) project or a Copilot CLI / API-level orchestration will serve you better. If you want a fast, deeply integrated, mode-driven council inside Claude Code, this plugin is the right fit.
+
+## Why three seats at all?
 
 Ask one model a question and you get one perspective. It'll sound confident even when it's wrong. It won't question its own assumptions. It definitely won't try to break its own argument.
 
-Different models have different blind spots. Claude is good at nuance but might overcomplicate things. GPT might miss edge cases Claude catches. Gemini has strong grounding but different reasoning patterns. By running them all in parallel and then having them interact, you get something no single model can produce alone.
+Even within one family, three differently-prompted seats catch different things. Beta will challenge a version number Alpha asserted with HIGH confidence. Gamma will propose a simpler design that makes Alpha's elaborate one look like over-engineering. The **mode determines how they interact**:
+- Collaborative: they steal each other's best ideas → novel synthesis
+- Adversarial: they attack the strongest position → battle-tested answer
 
-The key insight: **the mode determines how they interact.**
-- In collaborative mode, they steal each other's best ideas and the result is a novel synthesis
-- In adversarial mode, they attack the strongest position and the result is a battle-tested answer
+### The seats
 
-### The roles
+| # | Codename | Collaborative Role | Adversarial Role | Subagent | Model |
+|---|----------|--------------------|------------------|----------|-------|
+| 1 | **Alpha** | Deep Explorer | Drafter & Red Teamer | `council-alpha` | opus |
+| 2 | **Beta** | Practical Builder | Fact-Checker & Validator | `council-beta` | sonnet |
+| 3 | **Gamma** | Elegant Minimalist | Optimizer & Devil's Advocate | `council-gamma` | haiku |
+| 4 | **Orchestrator** | Author (writes final synthesis) | Judge (delivers verdict) | `council-orchestrator` | opus |
 
-| # | Codename | Collaborative Role | Adversarial Role | Default Model |
-|---|----------|--------------------|------------------|---------------|
-| 1 | **Alpha** | Deep Explorer | Drafter & Red Teamer | `claude-opus-4.6` |
-| 2 | **Beta** | Practical Builder | Fact-Checker & Validator | `gpt-5.4` |
-| 3 | **Gamma** | Elegant Minimalist | Optimizer & Devil's Advocate | `gemini-3.1-pro` |
-| 4 | **Orchestrator** | Author (writes final synthesis) | Judge (delivers verdict) | `claude-opus-4.6` |
-
-The council works best when each seat uses a **different model family**. If one model is unavailable, prefer another unused family; if that is impossible, run a smaller council instead of duplicating a family.
+Each subagent is a separate file in `agents/` with its own system prompt that locks in the seat's persistent role. The skill injects only the per-phase task framing.
 
 ## How it works
 
@@ -59,7 +64,7 @@ flowchart TD
     style E fill:#2ecc71,color:#fff
 ```
 
-1. **Draft** — Alpha, Beta, and Gamma all explore the problem independently from their angle
+1. **Draft** — Alpha, Beta, and Gamma all explore the problem independently
 2. **Improve** — Each agent reads the other two drafts and writes an improved version, stealing the best ideas
 3. **Synthesize** — The orchestrator authors the definitive response from the three improved drafts
 
@@ -92,25 +97,35 @@ flowchart TD
 
 ## Prerequisites
 
-- [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/) installed and authenticated
-- Access to multiple models through Copilot (the defaults use Claude, GPT, and Gemini)
+- [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) installed and authenticated
+- Access to Opus, Sonnet, and Haiku through your Claude Code plan (the council uses all three tiers)
 
 ## Install
+
+### Local (during development)
 
 ```bash
 git clone https://github.com/Sentry01/AgentCouncil.git
 cd AgentCouncil
-
-# Copy the skill
-mkdir -p ~/.copilot/skills/agent-council
-cp skills/agent-council/skill.md ~/.copilot/skills/agent-council/skill.md
-
-# Copy the agent
-mkdir -p ~/.copilot/agents
-cp agents/AgentCouncil.agent.md ~/.copilot/agents/AgentCouncil.agent.md
+claude --plugin-dir .
 ```
 
-No dependencies. No build. Just markdown files that Copilot CLI reads.
+The plugin is auto-discovered. No build step.
+
+### Project-local (commit into your own repo)
+
+Copy the plugin directory into your repo at `.claude/plugins/agent-council/`, or symlink it. Teammates get the council automatically when they run Claude Code in that repo.
+
+### Global (install across all projects)
+
+```bash
+mkdir -p ~/.claude/skills/agent-council ~/.claude/agents ~/.claude/commands
+cp skills/agent-council/SKILL.md ~/.claude/skills/agent-council/
+cp agents/council-*.md ~/.claude/agents/
+cp commands/council.md ~/.claude/commands/
+```
+
+You lose plugin namespacing but gain a single global install.
 
 ## Usage
 
@@ -118,8 +133,8 @@ No dependencies. No build. Just markdown files that Copilot CLI reads.
 
 The council automatically detects which mode to use based on your language:
 
-| You say... | Mode | Why |
-|-----------|------|-----|
+| You say… | Mode | Why |
+|----------|------|-----|
 | `council: How should we structure the API?` | 🤝 Collaborative | Default — exploring a design space |
 | `brainstorm: Novel approaches to caching` | 🤝 Collaborative | "brainstorm" = collaborative |
 | `debate: Monorepo vs polyrepo` | 🗡️ Adversarial | "debate" = adversarial |
@@ -129,13 +144,13 @@ The council automatically detects which mode to use based on your language:
 
 **Adversarial triggers:** debate, adversarial, challenge, stress-test, which is better, argue, attack, defend, versus, vs
 
-**Collaborative triggers (default):** council, siege, swarm, brainstorm, collaborate, explore, build on, novel, creative, ideas
+**Collaborative triggers (default):** council, siege, swarm, brainstorm, multi-agent, collaborate, explore, build on, novel, creative, ideas
 
-If both sets of trigger words appear, adversarial wins unless you use an explicit override like `collaborative council: ...`.
+If both sets of trigger words appear, adversarial wins unless you use an explicit override like `collaborative council: …`.
 
 ### Complexity gate
 
-The council should **short-circuit** and answer directly when the task is too simple to justify 6-7 subagent calls.
+The council **short-circuits** and answers directly when the task is too simple to justify 6–7 subagent calls.
 
 Typical fast-path cases:
 - arithmetic or obvious factual lookups
@@ -149,7 +164,19 @@ Typical council-worthy cases:
 - architecture and research synthesis
 - ambiguous problems where multi-perspective synthesis can beat one model
 
-### Inside a Copilot CLI session
+### Slash command
+
+```
+/council Should we use a monorepo or polyrepo for our microservices?
+```
+
+```
+/council debate Redis vs Memcached for our session store — which survives at scale?
+```
+
+### Inside any Claude Code session
+
+Trigger the skill by phrasing your prompt with a trigger word:
 
 ```
 council: Should we use a monorepo or polyrepo for our microservices?
@@ -159,26 +186,16 @@ council: Should we use a monorepo or polyrepo for our microservices?
 debate: Redis vs Memcached for our session store — which survives at scale?
 ```
 
-### As a standalone agent
+### Verbose mode
 
-```bash
-copilot --agent AgentCouncil "Brainstorm novel approaches to real-time sync"
-```
-
-```bash
-copilot --agent AgentCouncil "Stress-test this auth flow for vulnerabilities"
-```
-
-### Seeing the internal process
-
-By default you only get the final answer. If you want to see the reasoning flow:
+By default you only get the final answer. To see the reasoning flow:
 
 ```
 verbose council: What caching strategy for a real-time dashboard?
 ```
 
-**Verbose mode** shows a concise phase-by-phase view:
-- 💡 Alpha / 🔨 Beta / ✨ Gamma
+Verbose mode shows a concise phase-by-phase view:
+- 💡 Alpha / 🔨 Beta / ✨ Gamma drafts
 - improved drafts or attack summaries
 - final synthesis or verdict
 
@@ -203,40 +220,36 @@ If you want every draft in full, ask for **raw** or **full** council output expl
 ### Not worth it (either mode)
 
 - Quick fixes, file lookups, simple questions
-- Anything where speed matters more than correctness
-- Your model budget is tight
+- Anything where speed matters more than depth
+- Your model budget is tight (Opus calls aren't free)
 
 ## Cost & speed
 
-| Mode | Subagent Calls | Parallel Rounds | Wall Clock |
+| Mode | Subagent calls | Parallel rounds | Wall clock |
 |------|----------------|-----------------|------------|
 | Collaborative | 7 (3 + 3 + orchestrator) | 2 | ~2 rounds + synthesis |
-| Adversarial | 6 (3 + 2 + orchestrator) | 2 | ~2 rounds + verdict |
+| Adversarial | 4–6 (3 + 0–2 attackers + orchestrator) | 2 | ~2 rounds + verdict |
 
-Both modes run agents in parallel within each phase. The wall-clock time is roughly two sequential subagent calls plus the final orchestrator step, regardless of how many agents run in each round.
+Both modes run seats in parallel within each phase. Wall-clock time is roughly two sequential subagent calls plus the final orchestrator step.
+
+Two seats run on smaller tiers (Sonnet + Haiku), which keeps cost meaningfully lower than running three Opus calls.
 
 For trivial tasks, the correct move is to skip the council entirely.
 
 ## Adapting to domains
 
-The agents shift focus depending on what you're asking about:
+Each seat shifts focus depending on what you're asking about:
 
 | Domain | Alpha focuses on | Beta focuses on | Gamma focuses on |
-|--------|-----------------|-----------------|------------------|
+|--------|------------------|-----------------|------------------|
 | Code | Implementation + security self-review | API accuracy, versions, edge cases | Performance, readability, alternatives |
 | Architecture | System design + failure modes | Tech claims, benchmarks, scalability | Simplicity, clarity, alternatives |
 | Research | Comprehensive analysis + bias check | Source verification, citations | Actionability, counter-arguments |
 | Writing | Content + tone self-critique | Factual accuracy, consistency | Flow, conciseness, formatting |
 
-Domain precedence is: **Code → Architecture → Writing → Research → General**.
+Domain precedence: **Code → Architecture → Writing → Research → General**.
 
 Here, **Research** means investigation or literature-style evaluation, not code review.
-
-## Example
-
-Here's the council in action — Phase 1 dispatching all three agents in parallel across different model families:
-
-![Council Phase 1 — three agents dispatched in parallel](docs/council-example.png)
 
 ## Example prompts
 
@@ -268,9 +281,23 @@ verbose stress-test: Review this JWT implementation: [paste code]
 debate: PostgreSQL vs DynamoDB for a multi-tenant SaaS with unpredictable query patterns
 ```
 
+## Project layout
+
+```
+.claude-plugin/plugin.json           Plugin manifest
+skills/agent-council/SKILL.md        Main skill (triggers + protocol)
+agents/council-alpha.md              Deep Explorer seat (opus)
+agents/council-beta.md               Practical Builder seat (sonnet)
+agents/council-gamma.md              Elegant Minimalist seat (haiku)
+agents/council-orchestrator.md       Synthesizer / Judge (opus)
+commands/council.md                  /council slash command
+```
+
 ## Inspiration
 
-Inspired by Andrej Karpathy's [llm-council](https://github.com/karpathy/llm-council) — adapted as a Copilot CLI skill/agent with the dual-mode architecture.
+Inspired by Andrej Karpathy's [llm-council](https://github.com/karpathy/llm-council) — adapted as a Claude Code plugin with a dual-mode architecture.
+
+This plugin is a port of the original **[Sentry01/AgentCouncil](https://github.com/Sentry01/AgentCouncil)** Copilot CLI extension. If you want the true cross-family (Claude + GPT + Gemini) council, go use that one — it's the canonical multi-model version and where this design came from.
 
 ## License
 
