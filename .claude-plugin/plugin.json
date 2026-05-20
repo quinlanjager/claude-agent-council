@@ -1,0 +1,10 @@
+{
+  "name": "agent-council",
+  "version": "0.1.0",
+  "description": "Multi-perspective council. Runs 3 Claude subagents in parallel — collaborative (build on each other) or adversarial (debate to stress-test) — then orchestrates a final synthesis or verdict.",
+  "author": {
+    "name": "Sentry01"
+  },
+  "repository": "https://github.com/Sentry01/AgentCouncil",
+  "license": "MIT"
+}
